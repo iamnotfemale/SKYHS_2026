@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { createChart, IChartApi } from 'lightweight-charts'
+import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts'
 import { Candle } from '@/api/upbit'
 import { aggregateCandles, Interval } from '@/utils/candleAggregator'
 
@@ -18,23 +18,29 @@ const INTERVALS: { key: Interval; label: string }[] = [
 export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const hasInitialFit = useRef(false)
   const [interval, setInterval] = useState<Interval>('day')
 
   const chartData = useMemo(() => {
-    // 합산 → 날짜순 정렬 → 중복 날짜 제거 (bgCandles와 gameCandles 경계 처리)
     const combined = [...bgCandles, ...gameCandles]
       .sort((a, b) => a.candle_date_time_kst.localeCompare(b.candle_date_time_kst))
       .filter((c, i, arr) =>
         i === 0 ||
         c.candle_date_time_kst.split('T')[0] !== arr[i - 1].candle_date_time_kst.split('T')[0]
       )
+      .slice(1)   // 첫 번째 캔들(상장 초기 이상가) 제외
     return aggregateCandles(combined, interval)
   }, [bgCandles, gameCandles, interval])
 
+  // Effect 1: 차트 생성 (interval 변경 시 재생성)
   useEffect(() => {
-    if (!containerRef.current || chartData.length === 0) return
-
+    if (!containerRef.current) return
     if (chartRef.current) { chartRef.current.remove(); chartRef.current = null }
+    candleSeriesRef.current = null
+    volumeSeriesRef.current = null
+    hasInitialFit.current = false   // interval 바뀌면 초기 배치 다시
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
@@ -46,7 +52,6 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
       crosshair: { mode: 1 },
     })
 
-    // 캔들스틱
     const candleSeries = chart.addCandlestickSeries({
       upColor: '#ef4444',
       downColor: '#3b82f6',
@@ -56,7 +61,6 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
       wickDownColor: '#3b82f6',
     })
 
-    // 거래량 히스토그램
     const volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -64,6 +68,34 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
     chart.priceScale('volume').applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
     })
+
+    chartRef.current = chart
+    candleSeriesRef.current = candleSeries
+    volumeSeriesRef.current = volumeSeries
+
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+    })
+    ro.observe(containerRef.current)
+
+    return () => {
+      ro.disconnect()
+      chart.remove()
+      chartRef.current = null
+      candleSeriesRef.current = null
+      volumeSeriesRef.current = null
+    }
+  }, [interval])
+
+  // Effect 2: 데이터 업데이트 (턴 진행 시 차트 위치 유지)
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current || !volumeSeriesRef.current) return
+    if (chartData.length === 0) return
 
     const candleData = chartData.map((c) => ({
       time: c.candle_date_time_kst.split('T')[0] as `${number}-${string}-${string}`,
@@ -79,14 +111,14 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
       color: c.trade_price >= c.opening_price ? 'rgba(239,68,68,0.4)' : 'rgba(59,130,246,0.4)',
     }))
 
-    candleSeries.setData(candleData)
-    volumeSeries.setData(volumeData)
+    candleSeriesRef.current.setData(candleData)
+    volumeSeriesRef.current.setData(volumeData)
 
     // 게임 시작 마커
     const gameStartDate = scenarioStartDate as `${number}-${string}-${string}`
     const startCandle = candleData.find((c) => c.time >= gameStartDate)
     if (startCandle) {
-      candleSeries.setMarkers([{
+      candleSeriesRef.current.setMarkers([{
         time: startCandle.time,
         position: 'belowBar',
         color: '#facc15',
@@ -95,24 +127,17 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
       }])
     }
 
-    chart.timeScale().fitContent()
-    chartRef.current = chart
-
-    // window resize가 아닌 요소 크기 변화(패널 드래그 포함)를 감지
-    const ro = new ResizeObserver(() => {
-      if (containerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
+    // 최초 로드: 게임 시작일이 차트 중앙에 오도록 배치
+    if (!hasInitialFit.current && startCandle) {
+      const startIdx = candleData.findIndex((c) => c.time >= gameStartDate)
+      if (startIdx >= 0) {
+        const halfWindow = 40
+        chartRef.current.timeScale().setVisibleLogicalRange({
+          from: startIdx - halfWindow,
+          to: startIdx + halfWindow,
         })
+        hasInitialFit.current = true
       }
-    })
-    ro.observe(containerRef.current)
-
-    return () => {
-      ro.disconnect()
-      chart.remove()
-      chartRef.current = null
     }
   }, [chartData, scenarioStartDate])
 
@@ -120,16 +145,13 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
 
   return (
     <div className="flex flex-col h-full">
-      {/* 인터벌 선택 */}
       <div className="flex gap-1 px-3 py-2 border-b border-zinc-800">
         {INTERVALS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setInterval(key)}
             className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
-              interval === key
-                ? 'bg-yellow-400 text-black'
-                : 'text-zinc-400 hover:text-zinc-200'
+              interval === key ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {label}
@@ -137,7 +159,6 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
         ))}
       </div>
 
-      {/* 차트 */}
       <div className="flex-1 relative">
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">

@@ -36,7 +36,7 @@ interface GameState {
   setNewsMap: (map: NewsMap) => void
   setLoading: (loading: boolean) => void
   recordFirstChoice: (action: Action) => void
-  recordSecondChoice: (action: Action, price: number) => void
+  recordSecondChoice: (action: Action, price: number, pct: number) => void
   nextTurn: () => void
   reset: () => void
 }
@@ -91,7 +91,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  recordSecondChoice: (action, price) => {
+  recordSecondChoice: (action, price, pct) => {
     const { currentTurn, records, cash, holdings, avgPrice } = get()
     const updated = records.map((r) =>
       r.turn === currentTurn ? { ...r, secondChoice: action } : r
@@ -100,17 +100,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     let newCash = cash
     let newHoldings = holdings
     let newAvgPrice = avgPrice
-    const tradeAmount = Math.floor(cash * 0.5)
 
-    if (action === 'buy' && cash >= price) {
+    if (action === 'buy' && cash > 0) {
+      const tradeAmount = Math.floor(cash * pct)
       const coinsBought = tradeAmount / price
       newAvgPrice = (avgPrice * holdings + price * coinsBought) / (holdings + coinsBought)
       newCash = cash - tradeAmount
       newHoldings = holdings + coinsBought
     } else if (action === 'sell' && holdings > 0) {
-      newCash = cash + holdings * price
-      newHoldings = 0
-      newAvgPrice = 0
+      const coinsToSell = holdings * pct
+      newCash = cash + coinsToSell * price
+      newHoldings = holdings - coinsToSell
+      if (newHoldings < 0.000001) { newHoldings = 0; newAvgPrice = 0 }
     }
 
     set({ records: updated, cash: newCash, holdings: newHoldings, avgPrice: newAvgPrice })
