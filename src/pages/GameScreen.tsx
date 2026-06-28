@@ -1,19 +1,20 @@
-﻿import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useGameStore, Action } from '@/store/gameStore'
-import { SCENARIOS, getTurnEndDate } from '@/data/scenarios'
+import { SCENARIOS, getTurnStartDate, getTurnEndDate } from '@/data/scenarios'
 import { useScenarioLoader } from '@/hooks/useScenarioLoader'
+import { useCountUp } from '@/hooks/useCountUp'
 import ResizableLayout from '@/components/ResizableLayout'
 import CandleChart from '@/components/CandleChart'
 import ActionButtons from '@/components/ActionButtons'
 import TradeHistory from '@/components/TradeHistory'
 import EmotionPanel from '@/components/EmotionPanel'
+import MidCheckModal from '@/components/MidCheckModal'
+import IntroModal from '@/components/IntroModal'
 
 type Phase = 'first' | 'emotion'
 
 const ACTION_LABEL: Record<NonNullable<Action>, string> = {
-  buy: '매수 📈',
-  sell: '매도 📉',
-  hold: '보유 ⏸',
+  buy: '매수 📈', sell: '매도 📉', hold: '보유 ⏸',
 }
 const PCT_OPTIONS = [10, 25, 50, 100]
 
@@ -25,6 +26,7 @@ export default function GameScreen() {
     scenarioId, candles, bgCandles, isLoading,
     cash, holdings, fearGreedMap, avgPrice,
     recordFirstChoice, recordSecondChoice, nextTurn,
+    records,
   } = useGameStore()
 
   const [phase, setPhase] = useState<Phase>('first')
@@ -32,11 +34,16 @@ export default function GameScreen() {
   const [showFinalModal, setShowFinalModal] = useState(false)
   const [modalAction, setModalAction] = useState<Action>(null)
   const [modalPct, setModalPct] = useState(50)
+  const [showIntro, setShowIntro] = useState(true)
+  const [showMidCheck, setShowMidCheck] = useState(false)
+  const midCheckShown = useRef(false)
+  const [gaugeDisplayVal, setGaugeDisplayVal] = useState(0)
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!
   const coinTicker = scenario.market.split('-')[1]
   const visibleCandles = candles.slice(0, currentTurn * scenario.intervalDays)
   const currentPrice = visibleCandles[visibleCandles.length - 1]?.trade_price ?? 0
+  const turnDisplayDate = getTurnStartDate(scenario, currentTurn)
   const turnEndDate = getTurnEndDate(scenario, currentTurn)
 
   const holdingsValue = holdings * currentPrice
@@ -48,6 +55,30 @@ export default function GameScreen() {
   const fgValue = fg?.value ?? null
   const fgLabel = fg?.classification ?? '데이터 없음'
 
+  const animTotalAsset = useCountUp(totalAsset, 600)
+  const animProfit = useCountUp(profit, 600)
+
+  useEffect(() => {
+    if (phase !== 'first' && fgValue !== null) {
+      setGaugeDisplayVal(0)
+      const t = setTimeout(() => setGaugeDisplayVal(fgValue), 60)
+      return () => clearTimeout(t)
+    } else {
+      setGaugeDisplayVal(0)
+    }
+  }, [phase, fgValue])
+
+  const midPoint = Math.floor(totalTurns / 2) + 1
+  useEffect(() => {
+    if (currentTurn === midPoint && !midCheckShown.current && currentTurn > 1) {
+      midCheckShown.current = true
+      const t = setTimeout(() => setShowMidCheck(true), 400)
+      return () => clearTimeout(t)
+    }
+  }, [currentTurn, midPoint])
+
+  const changedCount = records.filter((r) => r.firstChoice !== r.secondChoice).length
+
   const handleFirstChoice = (action: Action) => {
     setFirstChoice(action)
     recordFirstChoice(action)
@@ -55,7 +86,7 @@ export default function GameScreen() {
   }
 
   const openFinalModal = () => {
-    setModalAction(firstChoice)   // 1차 선택 pre-select
+    setModalAction(firstChoice)
     setModalPct(50)
     setShowFinalModal(true)
   }
@@ -70,11 +101,6 @@ export default function GameScreen() {
     nextTurn()
   }
 
-  const closeModal = () => {
-    setShowFinalModal(false)
-  }
-
-  // 매수 예상 금액 / 매도 예상 수량
   const buyAmount = Math.floor(cash * modalPct / 100)
   const sellCoins = holdings * modalPct / 100
   const sellValue = Math.floor(sellCoins * currentPrice)
@@ -90,6 +116,36 @@ export default function GameScreen() {
     )
   }
 
+  /* ── 공통 블록 ── */
+  const fearGreedWidget = (
+    <div className="px-4 py-2.5 border-b border-zinc-800">
+      <p className="text-[10px] text-zinc-500 mb-1.5">공포탐욕지수</p>
+      {!fg || phase === 'first' ? (
+        <div className="flex items-center gap-2 text-zinc-600 text-xs">
+          <span>🔒</span><span>1차 결정 후 공개</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className={`text-2xl font-bold font-mono transition-colors duration-500 ${
+            fgValue! >= 60 ? 'text-red-400' : fgValue! >= 40 ? 'text-white' : 'text-blue-400'
+          }`}>{fgValue}</span>
+          <div className="flex-1">
+            <div className="relative h-2 rounded-full bg-gradient-to-r from-blue-600 via-yellow-400 to-red-500 mb-1">
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-zinc-900 shadow transition-all duration-700 ease-out"
+                style={{ left: `calc(${gaugeDisplayVal}% - 6px)` }}
+              />
+            </div>
+            <p className={`text-[10px] ${
+              fgValue! >= 60 ? 'text-red-400' : fgValue! >= 40 ? 'text-white' : 'text-blue-400'
+            }`}>{fgLabel}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  /* ── Desktop 패널 ── */
   const leftPanel = (
     <div className="flex flex-col h-full border-r border-zinc-800">
       <div className="flex items-center gap-3 px-3 py-2 border-b border-zinc-800 shrink-0">
@@ -99,50 +155,39 @@ export default function GameScreen() {
         )}
       </div>
       <div className="flex-1 min-h-0">
-        <CandleChart
-          bgCandles={bgCandles}
-          gameCandles={visibleCandles}
-          scenarioStartDate={scenario.startDate}
-        />
+        <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
       </div>
     </div>
   )
 
   const rightPanel = (
     <div className="flex flex-col h-full overflow-hidden bg-[#0a0a0a]">
-
-      {/* 날짜 + 턴 */}
       <div className="px-4 py-3 border-b border-zinc-800 shrink-0">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <p className="text-2xl font-bold font-mono tracking-wide">{turnEndDate}</p>
+            <p className="text-2xl font-bold font-mono tracking-wide">{turnDisplayDate}</p>
             <p className="text-xs text-zinc-500 mt-0.5">{scenario.title} · 턴 {currentTurn}/{totalTurns}</p>
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 ${
-            phase === 'first' ? 'bg-zinc-700 text-zinc-300' : 'bg-white/10 text-white'
+          <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 transition-colors ${
+            phase === 'first' ? 'bg-zinc-800 text-zinc-400' : 'bg-white/10 text-white'
           }`}>
             {phase === 'first' ? '① 1차 결정' : '② 신호 확인'}
           </span>
         </div>
         <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-          <div className="h-full bg-white rounded-full transition-all" style={{ width: `${(currentTurn / totalTurns) * 100}%` }} />
+          <div className="h-full bg-white rounded-full transition-all duration-500"
+            style={{ width: `${(currentTurn / totalTurns) * 100}%` }} />
         </div>
       </div>
 
-      {/* 자산 현황 */}
       <div className="px-4 py-3 border-b border-zinc-800 shrink-0">
-        {/* 평가 자산 */}
-        <div className="flex items-baseline justify-between mb-3">
-          <div>
-            <p className="text-[10px] text-zinc-500 mb-0.5">평가 자산</p>
-            <p className="text-xl font-bold font-mono">₩{totalAsset.toLocaleString()}</p>
-            <p className={`text-xs font-mono ${profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-              {profit >= 0 ? '+' : ''}{profit.toLocaleString()} ({profitRate.toFixed(2)}%)
-            </p>
-          </div>
+        <div className="mb-3">
+          <p className="text-[10px] text-zinc-500 mb-0.5">평가 자산</p>
+          <p className="text-xl font-bold font-mono">₩{animTotalAsset.toLocaleString()}</p>
+          <p className={`text-xs font-mono ${animProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+            {animProfit >= 0 ? '+' : ''}{animProfit.toLocaleString()} ({profitRate.toFixed(2)}%)
+          </p>
         </div>
-
-        {/* 현금 / 코인 보유 현황 */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-zinc-900 rounded-xl px-3 py-2">
             <p className="text-[10px] text-zinc-500 mb-0.5">현금</p>
@@ -152,14 +197,12 @@ export default function GameScreen() {
           </div>
           <div className="bg-zinc-900 rounded-xl px-3 py-2">
             <p className="text-[10px] text-zinc-500 mb-0.5">보유 {coinTicker}</p>
-            <p className="text-base font-bold font-mono text-white">
-              {holdings > 0 ? holdings.toFixed(2) : '0'}
-            </p>
+            <p className="text-base font-bold font-mono text-white">{holdings > 0 ? holdings.toFixed(2) : '0'}</p>
             {holdings > 0 && (
               <p className="text-[10px] text-zinc-500">
                 ≈ ₩{Math.floor(holdingsValue / 10000).toLocaleString()}만
                 {avgPrice > 0 && (
-                  <span className={` ml-1 ${currentPrice >= avgPrice ? 'text-red-400' : 'text-blue-400'}`}>
+                  <span className={`ml-1 ${currentPrice >= avgPrice ? 'text-red-400' : 'text-blue-400'}`}>
                     ({currentPrice >= avgPrice ? '+' : ''}{(((currentPrice - avgPrice) / avgPrice) * 100).toFixed(1)}%)
                   </span>
                 )}
@@ -167,193 +210,221 @@ export default function GameScreen() {
             )}
           </div>
         </div>
-
-        {/* 1차 결정 버튼 */}
         {phase === 'first' && (
           <>
             <p className="text-xs text-zinc-400 mb-2">
               <span className="text-white font-bold">차트만 보고</span> 1차 결정 — 감정 신호 공개 전
             </p>
-            <ActionButtons onSelect={handleFirstChoice} />
+            <ActionButtons onSelect={handleFirstChoice} canBuy={cash > 0} canSell={holdings > 0} />
           </>
         )}
         {phase === 'emotion' && (
           <p className="text-xs text-zinc-400 text-center py-1">
-            1차 선택: <span className="text-white font-bold">
-              {firstChoice ? ACTION_LABEL[firstChoice] : '—'}
-            </span> — 아래 감정 신호 확인 후 최종 결정
+            1차 선택: <span className="text-white font-bold">{firstChoice ? ACTION_LABEL[firstChoice] : '—'}</span>
+            {' '}— 아래 감정 신호 확인 후 최종 결정
           </p>
         )}
       </div>
 
-      {/* 공포탐욕지수 위젯 */}
-      <div className="px-4 py-2.5 border-b border-zinc-800 shrink-0">
-        <p className="text-[10px] text-zinc-500 mb-1.5">공포탐욕지수</p>
-        {!fg || phase === 'first' ? (
-          <div className="flex items-center gap-2 text-zinc-600 text-xs">
-            <span>🔒</span><span>1차 결정 후 공개</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className={`text-2xl font-bold font-mono ${
-              fgValue! >= 60 ? 'text-red-400' : fgValue! >= 40 ? 'text-white' : 'text-blue-400'
-            }`}>{fgValue}</span>
-            <div className="flex-1">
-              <div className="relative h-2 rounded-full bg-gradient-to-r from-blue-600 via-yellow-400 to-red-500 mb-1">
-                <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-zinc-900 shadow"
-                  style={{ left: `calc(${fgValue}% - 6px)` }} />
-              </div>
-              <p className={`text-[10px] ${
-                fgValue! >= 60 ? 'text-red-400' : fgValue! >= 40 ? 'text-white' : 'text-blue-400'
-              }`}>{fgLabel}</p>
+      {fearGreedWidget}
+
+      <div className="flex-1 flex flex-col min-h-0">
+        <EmotionPanel scenarioId={scenarioId!} turnEndDate={turnEndDate}
+          isRevealed={phase !== 'first'} onConfirm={openFinalModal} showConfirm={phase === 'emotion'} />
+      </div>
+
+      <details className="border-t border-zinc-800 shrink-0">
+        <summary className="px-4 py-2 text-xs text-zinc-500 cursor-pointer hover:text-zinc-300 select-none">
+          매매 내역 ({records.length}건)
+        </summary>
+        <div className="px-4 pb-3 max-h-40 overflow-y-auto"><TradeHistory /></div>
+      </details>
+    </div>
+  )
+
+  /* ── 최종 결정 팝업 (공통) ── */
+  const finalModal = showFinalModal && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={() => setShowFinalModal(false)}>
+      <div className="relative w-80 bg-[#1c1c1c] border border-zinc-700 rounded-2xl p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}>
+        <button onClick={() => setShowFinalModal(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-200 text-lg leading-none">✕</button>
+        <p className="text-xs text-zinc-500 mb-0.5">최종 결정</p>
+        <p className="text-sm text-zinc-400 mb-4">
+          1차 선택: <span className="text-white font-bold">{firstChoice ? ACTION_LABEL[firstChoice] : '—'}</span>
+        </p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {(['buy', 'hold', 'sell'] as const).map((act) => {
+            const isDisabled = (act === 'buy' && cash <= 0) || (act === 'sell' && holdings <= 0)
+            return (
+              <button key={act} onClick={() => !isDisabled && setModalAction(act)} disabled={isDisabled}
+                className={`py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
+                  isDisabled ? 'opacity-30 cursor-not-allowed bg-zinc-800 text-zinc-600'
+                  : modalAction === act
+                    ? act === 'buy' ? 'bg-red-500 text-white' : act === 'sell' ? 'bg-blue-500 text-white' : 'bg-zinc-500 text-white'
+                    : act === 'buy' ? 'bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500/25'
+                      : act === 'sell' ? 'bg-blue-500/15 border border-blue-500/40 text-blue-400 hover:bg-blue-500/25'
+                      : 'bg-zinc-700/40 border border-zinc-600 text-zinc-300 hover:bg-zinc-700/60'
+                }`}>
+                {act === 'buy' ? '매수' : act === 'sell' ? '매도' : '보유'}
+                {isDisabled && <span className="block text-[9px] font-normal mt-0.5">{act === 'buy' ? '현금 없음' : '보유 없음'}</span>}
+              </button>
+            )
+          })}
+        </div>
+        {(modalAction === 'buy' || modalAction === 'sell') && (
+          <div className="mb-4">
+            <p className="text-[10px] text-zinc-500 mb-2">
+              {modalAction === 'buy' ? '매수 비율 (현금 기준)' : '매도 비율 (수량 기준)'}
+            </p>
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
+              {PCT_OPTIONS.map((pct) => (
+                <button key={pct} onClick={() => setModalPct(pct)}
+                  className={`py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+                    modalPct === pct ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}>{pct}%</button>
+              ))}
+            </div>
+            <div className="bg-zinc-900/80 rounded-xl px-3 py-2.5 text-xs">
+              {modalAction === 'buy' ? (
+                <div className="flex justify-between text-zinc-300">
+                  <span>₩{buyAmount.toLocaleString()} 사용</span>
+                  <span className="text-red-400">≈ {(buyAmount / currentPrice).toFixed(2)} {coinTicker}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-zinc-300">
+                  <span>{sellCoins.toFixed(2)} {coinTicker} 매도</span>
+                  <span className="text-blue-400">≈ ₩{sellValue.toLocaleString()}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
+        <button onClick={handleSecondChoice} disabled={!modalAction}
+          className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
+            modalAction ? 'bg-white text-black hover:bg-white/80' : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+          }`}>
+          {!modalAction ? '위에서 선택하세요'
+            : modalAction === 'hold' ? '보유 확정'
+            : `${modalAction === 'buy' ? '매수' : '매도'} ${modalPct}% 확정`}
+        </button>
+        <button onClick={() => setShowFinalModal(false)} className="mt-2 w-full py-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+          취소하고 다시 보기
+        </button>
       </div>
-
-      {/* 뉴스·커뮤니티 패널 */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <EmotionPanel
-          scenarioId={scenarioId!}
-          turnEndDate={turnEndDate}
-          isRevealed={phase !== 'first'}
-          onConfirm={openFinalModal}
-          showConfirm={phase === 'emotion'}
-        />
-      </div>
-
-      {/* 매매 내역 */}
-      <details className="border-t border-zinc-800 shrink-0">
-        <summary className="px-4 py-2 text-xs text-zinc-500 cursor-pointer hover:text-zinc-300 select-none">
-          매매 내역 ({useGameStore.getState().records.length}건)
-        </summary>
-        <div className="px-4 pb-3 max-h-40 overflow-y-auto">
-          <TradeHistory />
-        </div>
-      </details>
     </div>
   )
 
   return (
     <>
-      <ResizableLayout
-        left={leftPanel}
-        right={rightPanel}
-        defaultLeftPct={60}
-        minLeftPct={35}
-        maxLeftPct={75}
-      />
+      {/* ────── 모바일 레이아웃 (<md) ────── */}
+      <div className="md:hidden flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
 
-      {/* 최종 결정 팝업 */}
-      {showFinalModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={closeModal}
-        >
-          <div
-            className="relative w-80 bg-[#1c1c1c] border border-zinc-700 rounded-2xl p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button onClick={closeModal} className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-200 text-lg leading-none">✕</button>
-
-            <p className="text-xs text-zinc-500 mb-0.5">최종 결정</p>
-            <p className="text-sm text-zinc-400 mb-4">
-              1차 선택: <span className="text-white font-bold">{firstChoice ? ACTION_LABEL[firstChoice] : '—'}</span>
-            </p>
-
-            {/* 액션 선택 */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {(['buy', 'hold', 'sell'] as const).map((act) => {
-                const isDisabled =
-                  (act === 'buy' && cash <= 0) ||
-                  (act === 'sell' && holdings <= 0)
-                return (
-                  <button
-                    key={act}
-                    onClick={() => !isDisabled && setModalAction(act)}
-                    disabled={isDisabled}
-                    className={`py-3 rounded-xl font-bold text-sm transition-all ${
-                      isDisabled
-                        ? 'opacity-30 cursor-not-allowed bg-zinc-800 text-zinc-600'
-                        : modalAction === act
-                          ? act === 'buy' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
-                            : act === 'sell' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                            : 'bg-zinc-500 text-white'
-                          : act === 'buy' ? 'bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500/25'
-                            : act === 'sell' ? 'bg-blue-500/15 border border-blue-500/40 text-blue-400 hover:bg-blue-500/25'
-                            : 'bg-zinc-700/40 border border-zinc-600 text-zinc-300 hover:bg-zinc-700/60'
-                    }`}
-                  >
-                    {act === 'buy' ? '매수' : act === 'sell' ? '매도' : '보유'}
-                    {isDisabled && <span className="block text-[9px] font-normal mt-0.5">{act === 'buy' ? '현금 없음' : '보유 없음'}</span>}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* 비율 선택 (매수/매도만) */}
-            {(modalAction === 'buy' || modalAction === 'sell') && (
-              <div className="mb-4">
-                <p className="text-[10px] text-zinc-500 mb-2">
-                  {modalAction === 'buy' ? '매수 비율 (보유 현금 기준)' : '매도 비율 (보유 수량 기준)'}
-                </p>
-                <div className="grid grid-cols-4 gap-1.5 mb-3">
-                  {PCT_OPTIONS.map((pct) => (
-                    <button
-                      key={pct}
-                      onClick={() => setModalPct(pct)}
-                      className={`py-2 rounded-lg text-xs font-medium transition-colors ${
-                        modalPct === pct ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {pct}%
-                    </button>
-                  ))}
-                </div>
-
-                {/* 거래 미리보기 */}
-                <div className="bg-zinc-900/80 rounded-xl px-3 py-2.5 text-xs">
-                  {modalAction === 'buy' ? (
-                    <div className="flex justify-between text-zinc-300">
-                      <span>₩{buyAmount.toLocaleString()} 사용</span>
-                      <span className="text-red-400">≈ {(buyAmount / currentPrice).toFixed(2)} {coinTicker} 매수</span>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between text-zinc-300">
-                      <span>{sellCoins.toFixed(2)} {coinTicker} 매도</span>
-                      <span className="text-blue-400">≈ ₩{sellValue.toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 확정 버튼 */}
-            <button
-              onClick={handleSecondChoice}
-              disabled={!modalAction}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${
-                modalAction
-                  ? 'bg-white text-black hover:bg-white/80'
-                  : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-              }`}
-            >
-              {!modalAction
-                ? '위에서 선택하세요'
-                : modalAction === 'hold'
-                ? '보유 확정'
-                : `${modalAction === 'buy' ? '매수' : '매도'} ${modalPct}% 확정`
-              }
-            </button>
-
-            <button onClick={closeModal} className="mt-2 w-full py-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-              취소하고 다시 보기
-            </button>
-          </div>
+        {/* 차트 헤더 */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 shrink-0">
+          <span className="font-bold text-xs text-zinc-300">{scenario.market}</span>
+          {currentPrice > 0 && (
+            <span className="text-white font-mono text-xs">₩{currentPrice.toLocaleString()}</span>
+          )}
+          <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${
+            phase === 'first' ? 'bg-zinc-800 text-zinc-400' : 'bg-white/10 text-white'
+          }`}>
+            {phase === 'first' ? '① 1차 결정' : '② 신호 확인'}
+          </span>
         </div>
+
+        {/* 차트 */}
+        <div className="h-[38vh] shrink-0">
+          <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
+        </div>
+
+        {/* 진행 바 */}
+        <div className="h-0.5 bg-zinc-800 shrink-0">
+          <div className="h-full bg-white transition-all duration-500"
+            style={{ width: `${(currentTurn / totalTurns) * 100}%` }} />
+        </div>
+
+        {/* 스크롤 영역 */}
+        <div className="flex-1 overflow-y-auto pb-20">
+
+          {/* 날짜 + 턴 */}
+          <div className="px-4 pt-3 pb-2 border-b border-zinc-800">
+            <p className="text-lg font-bold font-mono">{turnDisplayDate}</p>
+            <p className="text-[10px] text-zinc-500">{scenario.title} · 턴 {currentTurn}/{totalTurns}</p>
+          </div>
+
+          {/* 자산 요약 */}
+          <div className="px-4 py-3 border-b border-zinc-800">
+            <div className="flex items-baseline justify-between mb-2">
+              <div>
+                <p className="text-[10px] text-zinc-500">평가 자산</p>
+                <p className="text-lg font-bold font-mono">₩{animTotalAsset.toLocaleString()}</p>
+              </div>
+              <p className={`text-sm font-mono ${animProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                {animProfit >= 0 ? '+' : ''}{profitRate.toFixed(2)}%
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-zinc-900 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-zinc-500">현금</p>
+                <p className="text-sm font-bold font-mono text-white">
+                  ₩{cash >= 10000 ? `${Math.floor(cash / 10000).toLocaleString()}만` : cash.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-zinc-900 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-zinc-500">보유 {coinTicker}</p>
+                <p className="text-sm font-bold font-mono text-white">{holdings > 0 ? holdings.toFixed(2) : '0'}</p>
+                {holdings > 0 && avgPrice > 0 && (
+                  <p className={`text-[10px] ${currentPrice >= avgPrice ? 'text-red-400' : 'text-blue-400'}`}>
+                    {currentPrice >= avgPrice ? '+' : ''}{(((currentPrice - avgPrice) / avgPrice) * 100).toFixed(1)}%
+                  </p>
+                )}
+              </div>
+            </div>
+            {phase === 'emotion' && (
+              <p className="text-xs text-zinc-500 text-center mt-2">
+                1차 선택: <span className="text-white font-bold">{firstChoice ? ACTION_LABEL[firstChoice] : '—'}</span>
+              </p>
+            )}
+          </div>
+
+          {/* 공포탐욕 (모바일) */}
+          {fearGreedWidget}
+
+          {/* 뉴스·커뮤니티 — 탭 없이 연속 스크롤 */}
+          <EmotionPanel scenarioId={scenarioId!} turnEndDate={turnEndDate}
+            isRevealed={phase !== 'first'} onConfirm={openFinalModal}
+            showConfirm={false} scrollLayout />
+
+        </div>
+
+        {/* 하단 고정 액션 바 */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-zinc-800 px-4 py-3">
+          {phase === 'first' ? (
+            <ActionButtons onSelect={handleFirstChoice} canBuy={cash > 0} canSell={holdings > 0} />
+          ) : (
+            <button onClick={openFinalModal}
+              className="w-full py-3 rounded-xl bg-white text-black font-bold text-sm active:scale-95 transition-all">
+              감정 신호 확인 완료 — 최종 결정하기 →
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ────── 데스크탑 레이아웃 (md+) ────── */}
+      <div className="hidden md:block h-screen">
+        <ResizableLayout left={leftPanel} right={rightPanel}
+          defaultLeftPct={60} minLeftPct={35} maxLeftPct={75} />
+      </div>
+
+      {/* 공통 모달 */}
+      {finalModal}
+      {showIntro && <IntroModal scenario={scenario} onStart={() => setShowIntro(false)} />}
+      {showMidCheck && (
+        <MidCheckModal totalTurns={totalTurns} profit={profit} profitRate={profitRate}
+          changedCount={changedCount} totalDecisions={records.length}
+          onClose={() => setShowMidCheck(false)} />
       )}
     </>
   )
 }
-
-

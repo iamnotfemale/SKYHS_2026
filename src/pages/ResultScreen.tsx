@@ -1,8 +1,8 @@
-﻿import { useGameStore } from '@/store/gameStore'
-import { SCENARIOS, getTurnEndDate } from '@/data/scenarios'
+import { useState } from 'react'
+import { useGameStore } from '@/store/gameStore'
+import { SCENARIOS, getTurnStartDate } from '@/data/scenarios'
 import ResultChart from '@/components/ResultChart'
 
-// 감정 유형 정의
 const EMOTION_TYPES = [
   {
     range: [0, 20],
@@ -42,27 +42,23 @@ const EMOTION_TYPES = [
 ]
 
 function getEmotionType(rate: number) {
-  return EMOTION_TYPES.find(
-    (t) => rate >= t.range[0] && rate <= t.range[1]
-  ) ?? EMOTION_TYPES[2]
+  return EMOTION_TYPES.find((t) => rate >= t.range[0] && rate <= t.range[1]) ?? EMOTION_TYPES[2]
 }
 
-// 시나리오별 사후 결과 텍스트
 const SCENARIO_AFTERMATH: Record<number, string> = {
   1: '2021년 5월 8일, 일론 머스크는 SNL에 출연해 도지코인을 "허슬"이라고 불렀습니다. 방송 직후 도지코인은 30% 급락했고, 이후 한 달 만에 고점 대비 70% 이상 하락했습니다. "SNL 전까지만"이라는 커뮤니티의 예측은 정확했지만, 실제로 고점에서 매도한 사람은 많지 않았습니다.',
 }
 
 export default function ResultScreen() {
   const { records, candles, scenarioId, cash, holdings, reset } = useGameStore()
+  const [copied, setCopied] = useState(false)
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!
 
-  // 모든 턴의 날짜 계산
   const turnDates = Array.from({ length: scenario.totalTurns }, (_, i) =>
-    getTurnEndDate(scenario, i + 1)
+    getTurnStartDate(scenario, i + 1)
   )
 
-  // 핵심 지표 계산
   const completed = records.filter((r) => r.secondChoice !== null)
   const swayCount = completed.filter((r) => r.firstChoice !== r.secondChoice).length
   const swayRate = completed.length > 0 ? Math.round((swayCount / completed.length) * 100) : 0
@@ -79,6 +75,29 @@ export default function ResultScreen() {
   const emotionType = getEmotionType(swayRate)
   const aftermath = SCENARIO_AFTERMATH[scenarioId ?? 1]
 
+  const shareText = [
+    `${emotionType.emoji} 코인 투자 심리 진단`,
+    ``,
+    `시나리오: ${scenario.title}`,
+    `유형: ${emotionType.name}`,
+    `수익률: ${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(1)}%`,
+    `감정에 흔들린 비율: ${swayRate}%`,
+    ``,
+    `감정은 결정을 바꿀까요? → skysh3.vercel.app`,
+  ].join('\n')
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: '코인 투자 심리 진단', text: shareText })
+        return
+      } catch { /* 취소 시 무시 */ }
+    }
+    await navigator.clipboard.writeText(shareText)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="max-w-4xl mx-auto px-5 py-12">
@@ -93,36 +112,22 @@ export default function ResultScreen() {
 
         {/* 핵심 지표 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          <StatCard
-            label="감정에 흔들린 횟수"
-            value={`${swayCount}번`}
-            sub={`전체 ${completed.length}턴 중`}
-            highlight
-          />
-          <StatCard
-            label="흔들린 비율"
-            value={`${swayRate}%`}
-            sub={swayRate >= 50 ? '평균 이상' : '평균 이하'}
-            highlight
-          />
+          <StatCard label="감정에 흔들린 횟수" value={`${swayCount}번`} sub={`전체 ${completed.length}턴 중`} highlight />
+          <StatCard label="흔들린 비율" value={`${swayRate}%`} sub={swayRate >= 50 ? '평균 이상' : '평균 이하'} highlight />
           <StatCard
             label="최종 수익률"
             value={`${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(1)}%`}
             sub={`₩${Math.abs(profit / 10000).toFixed(0)}만 ${profit >= 0 ? '수익' : '손실'}`}
             positive={profit >= 0}
           />
-          <StatCard
-            label="거래 내역"
-            value={`매수 ${buyCount} / 매도 ${sellCount}`}
-            sub={`보유 ${completed.length - buyCount - sellCount}턴`}
-          />
+          <StatCard label="거래 내역" value={`매수 ${buyCount} / 매도 ${sellCount}`} sub={`보유 ${completed.length - buyCount - sellCount}턴`} />
         </div>
 
-        {/* 전체 차트 + 마커 */}
+        {/* 전체 차트 */}
         <div className="mb-8">
           <h2 className="text-sm text-zinc-500 mb-3 flex items-center gap-2">
             전체 게임 구간 차트
-            <span className="text-[10px] text-zinc-600">↑ 빨간 화살표 = 매수 / 파란 화살표 = 매도 / ↩ = 마음 바꿈</span>
+            <span className="text-[10px] text-zinc-600">↑ 빨간 = 매수 / 파란 = 매도</span>
           </h2>
           <div className="h-[280px] rounded-2xl overflow-hidden border border-zinc-800">
             <ResultChart candles={candles} records={records} turnDates={turnDates} />
@@ -138,9 +143,9 @@ export default function ResultScreen() {
                 <tr className="border-b border-zinc-800 text-zinc-500 text-xs">
                   <th className="px-4 py-2.5 text-left">턴</th>
                   <th className="px-4 py-2.5 text-left">날짜</th>
-                  <th className="px-4 py-2.5 text-center">차트만 봤을 때</th>
-                  <th className="px-4 py-2.5 text-center">감정 신호 후</th>
-                  <th className="px-4 py-2.5 text-center">결과</th>
+                  <th className="px-4 py-2.5 text-center">차트만</th>
+                  <th className="px-4 py-2.5 text-center">감정 후</th>
+                  <th className="px-4 py-2.5 text-center">변경</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,17 +155,10 @@ export default function ResultScreen() {
                     <tr key={r.turn} className={`border-b border-zinc-800/50 last:border-0 ${changed ? 'bg-white/[0.04]' : ''}`}>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs">{r.turn}</td>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs">{turnDates[r.turn - 1]}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        <ActionBadge action={r.firstChoice} />
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <ActionBadge action={r.secondChoice} />
-                      </td>
+                      <td className="px-4 py-2.5 text-center"><ActionBadge action={r.firstChoice} /></td>
+                      <td className="px-4 py-2.5 text-center"><ActionBadge action={r.secondChoice} /></td>
                       <td className="px-4 py-2.5 text-center text-xs">
-                        {changed
-                          ? <span className="text-white font-medium">⚡ 변경</span>
-                          : <span className="text-zinc-600">유지</span>
-                        }
+                        {changed ? <span className="text-white font-medium">⚡ 변경</span> : <span className="text-zinc-700">—</span>}
                       </td>
                     </tr>
                   )
@@ -170,7 +168,7 @@ export default function ResultScreen() {
           </div>
         </div>
 
-        {/* 실제 시장 결과 공개 */}
+        {/* 실제 시장 결과 */}
         {aftermath && (
           <div className="mb-8 rounded-2xl border border-white/20 bg-white/[0.04] px-6 py-5">
             <p className="text-xs text-white mb-2 font-medium">실제 시장에서는 어떤 일이 일어났을까요?</p>
@@ -185,18 +183,28 @@ export default function ResultScreen() {
         </div>
 
         {/* CTA */}
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-wrap gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-10 py-4 bg-white text-black font-bold rounded-full hover:bg-white/80 transition-colors"
+            className="px-8 py-3.5 bg-white text-black font-bold rounded-full hover:bg-zinc-200 active:scale-95 transition-all"
           >
             다시 도전하기
           </button>
           <button
             onClick={() => useGameStore.getState().setScreen('scenario')}
-            className="px-10 py-4 bg-zinc-800 text-zinc-200 font-bold rounded-full hover:bg-zinc-700 transition-colors"
+            className="px-8 py-3.5 bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold rounded-full hover:bg-zinc-800 active:scale-95 transition-all"
           >
             다른 시나리오
+          </button>
+          <button
+            onClick={handleShare}
+            className="px-8 py-3.5 bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold rounded-full hover:bg-zinc-800 active:scale-95 transition-all flex items-center gap-2"
+          >
+            {copied ? (
+              <><span className="text-green-400">✓</span> 복사됨</>
+            ) : (
+              <><span>↗</span> 결과 공유</>
+            )}
           </button>
         </div>
 
@@ -205,19 +213,14 @@ export default function ResultScreen() {
   )
 }
 
-function StatCard({
-  label, value, sub, highlight, positive,
-}: {
+function StatCard({ label, value, sub, highlight, positive }: {
   label: string; value: string; sub: string; highlight?: boolean; positive?: boolean
 }) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-4">
       <p className="text-[10px] text-zinc-500 mb-1">{label}</p>
       <p className={`text-2xl font-bold mb-0.5 ${
-        highlight ? 'text-white'
-        : positive === true ? 'text-red-400'
-        : positive === false ? 'text-blue-400'
-        : 'text-white'
+        highlight ? 'text-white' : positive === true ? 'text-red-400' : positive === false ? 'text-blue-400' : 'text-white'
       }`}>{value}</p>
       <p className="text-[10px] text-zinc-500">{sub}</p>
     </div>
@@ -234,5 +237,3 @@ function ActionBadge({ action }: { action: string | null }) {
   const { label, color } = map[action] ?? { label: action, color: 'text-zinc-400' }
   return <span className={`text-xs font-medium ${color}`}>{label}</span>
 }
-
-

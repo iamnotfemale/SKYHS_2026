@@ -57,7 +57,14 @@ export const SCENARIOS: Scenario[] = [
   },
 ]
 
-/** 특정 턴의 마지막 날짜 (공탐지수 조회용) */
+/** 특정 턴의 시작 날짜 (화면 표시용) */
+export function getTurnStartDate(scenario: Scenario, turn: number): string {
+  const d = new Date(scenario.startDate)
+  d.setDate(d.getDate() + (turn - 1) * scenario.intervalDays)
+  return d.toISOString().split('T')[0]
+}
+
+/** 특정 턴의 마지막 날짜 (뉴스·공탐지수 조회용) */
 export function getTurnEndDate(scenario: Scenario, turn: number): string {
   const d = new Date(scenario.startDate)
   d.setDate(d.getDate() + turn * scenario.intervalDays - 1)
