@@ -324,38 +324,35 @@ export default function GameScreen() {
   return (
     <>
       {/* ────── 모바일 레이아웃 (<md) ────── */}
-      <div className="md:hidden flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
+      <div className="md:hidden h-screen bg-[#0a0a0a] overflow-y-auto" onScroll={handleMobileScroll}>
 
-        {/* 차트 헤더 (항상 고정) */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 shrink-0">
-          <span className="font-bold text-xs text-zinc-300">{scenario.market}</span>
-          {currentPrice > 0 && (
-            <span className="text-white font-mono text-xs">₩{currentPrice.toLocaleString()}</span>
-          )}
-          <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${
-            phase === 'first' ? 'bg-zinc-800 text-zinc-400' : 'bg-white/10 text-white'
-          }`}>
-            {phase === 'first' ? '① 1차 결정' : '② 신호 확인'}
-          </span>
+        {/* sticky 상단 — 차트 + 헤더 */}
+        <div className="sticky top-0 z-20 bg-[#0a0a0a]">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
+            <span className="font-bold text-xs text-zinc-300">{scenario.market}</span>
+            {currentPrice > 0 && (
+              <span className="text-white font-mono text-xs">₩{currentPrice.toLocaleString()}</span>
+            )}
+            <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full ${
+              phase === 'first' ? 'bg-zinc-800 text-zinc-400' : 'bg-white/10 text-white'
+            }`}>
+              {phase === 'first' ? '① 1차 결정' : '② 신호 확인'}
+            </span>
+          </div>
+          <div
+            className="overflow-hidden transition-[height] duration-300 ease-in-out"
+            style={{ height: chartCollapsed ? '44px' : '38vh' }}
+          >
+            <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
+          </div>
+          <div className="h-0.5 bg-zinc-800">
+            <div className="h-full bg-white transition-all duration-500"
+              style={{ width: `${(currentTurn / totalTurns) * 100}%` }} />
+          </div>
         </div>
 
-        {/* 차트 — 스크롤하면 축소 */}
-        <div
-          className="shrink-0 overflow-hidden transition-[height] duration-300 ease-in-out"
-          style={{ height: chartCollapsed ? '44px' : '38vh' }}
-        >
-          <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
-        </div>
-
-        {/* 진행 바 */}
-        <div className="h-0.5 bg-zinc-800 shrink-0">
-          <div className="h-full bg-white transition-all duration-500"
-            style={{ width: `${(currentTurn / totalTurns) * 100}%` }} />
-        </div>
-
-        {/* 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto" onScroll={handleMobileScroll}>
-
+        {/* 스크롤 콘텐츠 — sticky 아래로 흐름 */}
+        <div>
           {/* 날짜 + 턴 */}
           <div className="px-4 pt-3 pb-2 border-b border-zinc-800">
             <p className="text-lg font-bold font-mono">{turnDisplayDate}</p>
@@ -397,15 +394,15 @@ export default function GameScreen() {
             )}
           </div>
 
-          {/* 공포탐욕 (모바일) */}
+          {/* 공포탐욕 */}
           {fearGreedWidget}
 
-          {/* 뉴스·커뮤니티 — 탭 없이 연속 스크롤 */}
+          {/* 뉴스 + 커뮤니티 연속 스크롤 */}
           <EmotionPanel scenarioId={scenarioId!} turnEndDate={turnEndDate}
             isRevealed={phase !== 'first'} onConfirm={openFinalModal}
             showConfirm={false} scrollLayout />
 
-          {/* 결정 버튼 — 커뮤니티 아래 인라인 */}
+          {/* 결정 버튼 */}
           <div className="px-4 py-5 border-t border-zinc-800 mt-2">
             {phase === 'first' ? (
               <>
@@ -422,7 +419,6 @@ export default function GameScreen() {
             )}
           </div>
 
-          {/* 하단 여백 */}
           <div className="h-8" />
         </div>
       </div>
