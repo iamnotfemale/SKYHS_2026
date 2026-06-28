@@ -38,6 +38,13 @@ export default function GameScreen() {
   const [showMidCheck, setShowMidCheck] = useState(false)
   const midCheckShown = useRef(false)
   const [gaugeDisplayVal, setGaugeDisplayVal] = useState(0)
+  const [chartCollapsed, setChartCollapsed] = useState(false)
+
+  const handleMobileScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const sy = e.currentTarget.scrollTop
+    if (!chartCollapsed && sy > 60) setChartCollapsed(true)
+    if (chartCollapsed && sy < 20) setChartCollapsed(false)
+  }
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!
   const coinTicker = scenario.market.split('-')[1]
@@ -320,7 +327,7 @@ export default function GameScreen() {
       {/* ────── 모바일 레이아웃 (<md) ────── */}
       <div className="md:hidden flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
 
-        {/* 차트 헤더 */}
+        {/* 차트 헤더 (항상 고정) */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 shrink-0">
           <span className="font-bold text-xs text-zinc-300">{scenario.market}</span>
           {currentPrice > 0 && (
@@ -333,8 +340,11 @@ export default function GameScreen() {
           </span>
         </div>
 
-        {/* 차트 */}
-        <div className="h-[38vh] shrink-0">
+        {/* 차트 — 스크롤하면 축소 */}
+        <div
+          className="shrink-0 overflow-hidden transition-[height] duration-300 ease-in-out"
+          style={{ height: chartCollapsed ? '44px' : '38vh' }}
+        >
           <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
         </div>
 
@@ -345,7 +355,7 @@ export default function GameScreen() {
         </div>
 
         {/* 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto pb-20">
+        <div className="flex-1 overflow-y-auto" onScroll={handleMobileScroll}>
 
           {/* 날짜 + 턴 */}
           <div className="px-4 pt-3 pb-2 border-b border-zinc-800">
@@ -396,18 +406,25 @@ export default function GameScreen() {
             isRevealed={phase !== 'first'} onConfirm={openFinalModal}
             showConfirm={false} scrollLayout />
 
-        </div>
+          {/* 결정 버튼 — 커뮤니티 아래 인라인 */}
+          <div className="px-4 py-5 border-t border-zinc-800 mt-2">
+            {phase === 'first' ? (
+              <>
+                <p className="text-xs text-zinc-500 mb-3 text-center">
+                  <span className="text-white font-bold">차트만 보고</span> 1차 결정하세요
+                </p>
+                <ActionButtons onSelect={handleFirstChoice} canBuy={cash > 0} canSell={holdings > 0} />
+              </>
+            ) : (
+              <button onClick={openFinalModal}
+                className="w-full py-4 rounded-xl bg-white text-black font-bold text-sm active:scale-95 transition-all">
+                감정 신호 확인 완료 — 최종 결정하기 →
+              </button>
+            )}
+          </div>
 
-        {/* 하단 고정 액션 바 */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0a0a0a]/95 backdrop-blur-sm border-t border-zinc-800 px-4 py-3">
-          {phase === 'first' ? (
-            <ActionButtons onSelect={handleFirstChoice} canBuy={cash > 0} canSell={holdings > 0} />
-          ) : (
-            <button onClick={openFinalModal}
-              className="w-full py-3 rounded-xl bg-white text-black font-bold text-sm active:scale-95 transition-all">
-              감정 신호 확인 완료 — 최종 결정하기 →
-            </button>
-          )}
+          {/* 하단 여백 */}
+          <div className="h-8" />
         </div>
       </div>
 
