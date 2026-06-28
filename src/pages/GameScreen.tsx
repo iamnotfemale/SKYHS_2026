@@ -239,9 +239,9 @@ export default function GameScreen() {
       <ResizableLayout
         left={leftPanel}
         right={rightPanel}
-        defaultLeftPct={35}
-        minLeftPct={20}
-        maxLeftPct={60}
+        defaultLeftPct={45}
+        minLeftPct={25}
+        maxLeftPct={65}
       />
 
       {/* 최종 결정 팝업 */}
