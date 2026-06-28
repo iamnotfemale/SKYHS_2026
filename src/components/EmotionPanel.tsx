@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { SCENARIO_NEWS } from '@/data/scenarioNews'
 import { SCENARIO_COMMUNITY } from '@/data/scenarioCommunity'
 
@@ -19,6 +19,9 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function EmotionPanel({ scenarioId, turnEndDate, isRevealed, onConfirm, showConfirm }: Props) {
   const [tab, setTab] = useState<Tab>('news')
+
+  // 새 턴 시작 시 항상 뉴스 탭으로 리셋
+  useEffect(() => { setTab('news') }, [turnEndDate])
 
   const news = SCENARIO_NEWS[scenarioId]?.[turnEndDate] ?? []
   const community = SCENARIO_COMMUNITY[scenarioId]?.[turnEndDate] ?? []

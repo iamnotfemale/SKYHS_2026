@@ -205,7 +205,7 @@ export default function GameScreen() {
             <p className="text-xs text-zinc-400 mb-2">
               <span className="text-white font-bold">차트만 보고</span> 1차 결정 — 감정 신호 공개 전
             </p>
-            <ActionButtons onSelect={handleFirstChoice} />
+            <ActionButtons onSelect={handleFirstChoice} canBuy={cash > 0} canSell={holdings > 0} />
           </>
         )}
         {phase === 'emotion' && (
