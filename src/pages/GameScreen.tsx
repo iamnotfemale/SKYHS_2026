@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useGameStore, Action } from '@/store/gameStore'
+import { SCENARIOS, getTurnEndDate } from '@/data/scenarios'
+import { useScenarioLoader } from '@/hooks/useScenarioLoader'
 import CandleChart from '@/components/CandleChart'
 import EmotionPanel from '@/components/EmotionPanel'
 import ActionButtons from '@/components/ActionButtons'
@@ -8,9 +10,21 @@ import Portfolio from '@/components/Portfolio'
 type Phase = 'first' | 'emotion' | 'second'
 
 export default function GameScreen() {
-  const { currentTurn, totalTurns, recordFirstChoice, recordSecondChoice, nextTurn } = useGameStore()
+  useScenarioLoader()
+
+  const {
+    currentTurn, totalTurns,
+    scenarioId, candles, isLoading,
+    recordFirstChoice, recordSecondChoice, nextTurn,
+  } = useGameStore()
+
   const [phase, setPhase] = useState<Phase>('first')
   const [firstChoice, setFirstChoice] = useState<Action>(null)
+
+  const scenario = SCENARIOS.find((s) => s.id === scenarioId)!
+  const visibleCandles = candles.slice(0, currentTurn * scenario.intervalDays)
+  const currentPrice = visibleCandles[visibleCandles.length - 1]?.trade_price ?? 0
+  const turnEndDate = getTurnEndDate(scenario, currentTurn)
 
   const handleFirstChoice = (action: Action) => {
     setFirstChoice(action)
@@ -19,12 +33,18 @@ export default function GameScreen() {
   }
 
   const handleSecondChoice = (action: Action) => {
-    // TODO: 실제 가격은 현재 턴의 종가로 대체
-    const currentPrice = 100
     recordSecondChoice(action, currentPrice)
     setPhase('first')
     setFirstChoice(null)
     nextTurn()
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-zinc-400">데이터 불러오는 중...</p>
+      </div>
+    )
   }
 
   return (
@@ -38,11 +58,14 @@ export default function GameScreen() {
             style={{ width: `${(currentTurn / totalTurns) * 100}%` }}
           />
         </div>
-        <Portfolio />
+        <Portfolio currentPrice={currentPrice} />
       </div>
 
+      {/* 날짜 */}
+      <p className="text-xs text-zinc-500 text-center">{turnEndDate} 기준</p>
+
       {/* 차트 */}
-      <CandleChart turn={currentTurn} />
+      <CandleChart candles={visibleCandles} />
 
       {/* 1차 선택 */}
       {phase === 'first' && (
@@ -57,8 +80,7 @@ export default function GameScreen() {
       {/* 감정 신호 */}
       {phase === 'emotion' && (
         <EmotionPanel
-          turn={currentTurn}
-          firstChoice={firstChoice}
+          turnEndDate={turnEndDate}
           onConfirm={() => setPhase('second')}
         />
       )}

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { Screen } from '@/App'
+import { Candle } from '@/api/upbit'
+import { FearGreedMap } from '@/api/fearGreed'
 
 export type Action = 'buy' | 'sell' | 'hold' | null
 
@@ -15,11 +17,19 @@ interface GameState {
   currentTurn: number
   totalTurns: number
   cash: number
-  holdings: number        // 보유 코인 수량
-  avgPrice: number        // 평균 매수가
+  holdings: number
+  avgPrice: number
   records: TurnRecord[]
+  // API 데이터
+  candles: Candle[]
+  fearGreedMap: FearGreedMap
+  isLoading: boolean
+  // actions
   setScreen: (screen: Screen) => void
   selectScenario: (id: number) => void
+  setCandles: (candles: Candle[]) => void
+  setFearGreedMap: (map: FearGreedMap) => void
+  setLoading: (loading: boolean) => void
   recordFirstChoice: (action: Action) => void
   recordSecondChoice: (action: Action, price: number) => void
   nextTurn: () => void
@@ -37,6 +47,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   holdings: 0,
   avgPrice: 0,
   records: [],
+  candles: [],
+  fearGreedMap: {},
+  isLoading: false,
 
   setScreen: (screen) => set({ screen }),
 
@@ -49,12 +62,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       holdings: 0,
       avgPrice: 0,
       records: [],
+      candles: [],
+      fearGreedMap: {},
     }),
+
+  setCandles: (candles) => set({ candles }),
+  setFearGreedMap: (fearGreedMap) => set({ fearGreedMap }),
+  setLoading: (isLoading) => set({ isLoading }),
 
   recordFirstChoice: (action) => {
     const { currentTurn, records } = get()
-    const existing = records.find((r) => r.turn === currentTurn)
-    if (existing) {
+    const exists = records.find((r) => r.turn === currentTurn)
+    if (exists) {
       set({ records: records.map((r) => r.turn === currentTurn ? { ...r, firstChoice: action } : r) })
     } else {
       set({ records: [...records, { turn: currentTurn, firstChoice: action, secondChoice: null }] })
@@ -70,9 +89,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     let newCash = cash
     let newHoldings = holdings
     let newAvgPrice = avgPrice
-    const tradeAmount = Math.floor(cash * 0.5) // 50% 단위 매매
+    const tradeAmount = Math.floor(cash * 0.5)
 
-    if (action === 'buy' && cash > 0) {
+    if (action === 'buy' && cash >= price) {
       const coinsBought = tradeAmount / price
       newAvgPrice = (avgPrice * holdings + price * coinsBought) / (holdings + coinsBought)
       newCash = cash - tradeAmount
@@ -104,5 +123,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       holdings: 0,
       avgPrice: 0,
       records: [],
+      candles: [],
+      fearGreedMap: {},
     }),
 }))

@@ -1,22 +1,21 @@
-import { Action } from '@/store/gameStore'
+import { useGameStore } from '@/store/gameStore'
 
 interface Props {
-  turn: number
-  firstChoice?: Action
+  turnEndDate: string   // "YYYY-MM-DD"
   onConfirm: () => void
 }
 
-// TODO: 시나리오별 실제 데이터로 교체
-const DUMMY_EMOTIONS: Record<number, { fearGreed: number; community: string; news: string }> = {
-  1: { fearGreed: 82, community: '"가즈아!!! 이거 천만원 넣었다 ㅋㅋ"', news: '도지코인, 일주일 만에 200% 상승' },
-  2: { fearGreed: 35, community: '"살까요 말까요... 너무 올랐나"', news: '비트코인 조정 우려에도 투자자 몰려' },
-}
+export default function EmotionPanel({ turnEndDate, onConfirm }: Props) {
+  const fearGreedMap = useGameStore((s) => s.fearGreedMap)
+  const fg = fearGreedMap[turnEndDate]
 
-export default function EmotionPanel({ turn, onConfirm }: Props) {
-  const data = DUMMY_EMOTIONS[turn] ?? DUMMY_EMOTIONS[1]
-
-  const fgColor = data.fearGreed >= 60 ? 'text-red-400' : data.fearGreed >= 40 ? 'text-yellow-400' : 'text-blue-400'
-  const fgLabel = data.fearGreed >= 60 ? '탐욕' : data.fearGreed >= 40 ? '중립' : '공포'
+  const fgValue = fg?.value ?? null
+  const fgLabel = fg?.classification ?? '데이터 없음'
+  const fgColor =
+    fgValue === null ? 'text-zinc-400'
+    : fgValue >= 60 ? 'text-red-400'
+    : fgValue >= 40 ? 'text-yellow-400'
+    : 'text-blue-400'
 
   return (
     <div className="flex flex-col gap-3">
@@ -24,20 +23,26 @@ export default function EmotionPanel({ turn, onConfirm }: Props) {
 
       {/* 공포탐욕지수 */}
       <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800">
-        <p className="text-xs text-zinc-500 mb-1">공포탐욕지수</p>
-        <p className={`text-3xl font-bold ${fgColor}`}>{data.fearGreed} <span className="text-lg">{fgLabel}</span></p>
+        <p className="text-xs text-zinc-500 mb-1">공포탐욕지수 ({turnEndDate})</p>
+        {fgValue !== null ? (
+          <p className={`text-3xl font-bold ${fgColor}`}>
+            {fgValue} <span className="text-lg">{fgLabel}</span>
+          </p>
+        ) : (
+          <p className="text-zinc-500 text-sm">데이터를 불러오는 중...</p>
+        )}
       </div>
 
-      {/* 커뮤니티 */}
+      {/* 커뮤니티 — TODO: 시나리오별 실제 데이터 */}
       <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800">
         <p className="text-xs text-zinc-500 mb-2">커뮤니티 반응</p>
-        <p className="text-zinc-300 text-sm italic">"{data.community}"</p>
+        <p className="text-zinc-300 text-sm italic">"(커뮤니티 글 작성 예정)"</p>
       </div>
 
-      {/* 뉴스 */}
+      {/* 뉴스 — TODO: 시나리오별 실제 데이터 */}
       <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800">
         <p className="text-xs text-zinc-500 mb-2">오늘의 뉴스</p>
-        <p className="text-zinc-300 text-sm">{data.news}</p>
+        <p className="text-zinc-300 text-sm">(뉴스 작성 예정)</p>
       </div>
 
       <button

@@ -3,9 +3,10 @@ export interface Scenario {
   title: string
   description: string
   tags: string[]
-  market: string        // Upbit 마켓 코드
-  startDate: string     // 첫 턴 기준 날짜 (ISO)
+  market: string
+  startDate: string     // 첫 캔들 날짜 (ISO "YYYY-MM-DD")
   intervalDays: number  // 턴당 간격
+  totalTurns: number
   available: boolean
 }
 
@@ -16,8 +17,9 @@ export const SCENARIOS: Scenario[] = [
     description: '일론 머스크 트윗 한 줄에 5000% 폭등한 그 날',
     tags: ['#밈코인', '#롤러코스터', '#일론효과'],
     market: 'KRW-DOGE',
-    startDate: '2021-01-01',
+    startDate: '2021-04-01',   // DOGE 상장 후 폭등 시점
     intervalDays: 3,
+    totalTurns: 12,
     available: true,
   },
   {
@@ -28,6 +30,7 @@ export const SCENARIOS: Scenario[] = [
     market: 'KRW-BTC',
     startDate: '2021-03-01',
     intervalDays: 7,
+    totalTurns: 12,
     available: false,
   },
   {
@@ -38,6 +41,7 @@ export const SCENARIOS: Scenario[] = [
     market: 'KRW-BTC',
     startDate: '2022-05-01',
     intervalDays: 7,
+    totalTurns: 12,
     available: false,
   },
   {
@@ -48,6 +52,21 @@ export const SCENARIOS: Scenario[] = [
     market: 'KRW-BTC',
     startDate: '2025-07-01',
     intervalDays: 7,
+    totalTurns: 12,
     available: false,
   },
 ]
+
+/** 특정 턴의 마지막 날짜 (공탐지수 조회용) */
+export function getTurnEndDate(scenario: Scenario, turn: number): string {
+  const d = new Date(scenario.startDate)
+  d.setDate(d.getDate() + turn * scenario.intervalDays - 1)
+  return d.toISOString().split('T')[0]
+}
+
+/** Upbit API to 파라미터 (전체 시나리오 마지막 날 다음날) */
+export function getScenarioToParam(scenario: Scenario): string {
+  const d = new Date(scenario.startDate)
+  d.setDate(d.getDate() + scenario.totalTurns * scenario.intervalDays)
+  return d.toISOString().split('.')[0] + 'Z'
+}
