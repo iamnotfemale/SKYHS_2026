@@ -32,6 +32,7 @@ export const useGameStore = create((set, get) => ({
   actions: {
     receive:   () => set({ screen: 'select' }),
     restart:   () => set({ ...initialState, screen: 'start' }),
+    goSelect:  () => set({ screen: 'select' }),
     selChar:   (id) => set({ char: id }),
     selScen:   (id) => set({ scenario: id }),
     startGame: () => set(s => ({ ...initialState, char: s.char, scenario: s.scenario, screen: 'main', trust: 35, startTrust: 35 })),

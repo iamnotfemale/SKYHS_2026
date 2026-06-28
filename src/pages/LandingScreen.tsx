@@ -46,24 +46,24 @@ export default function LandingScreen() {
             <span className="text-zinc-300 group-hover:text-zinc-600 transition-colors text-lg">→</span>
           </button>
 
-          {/* 실험 02 — 준비중 */}
-          <button
-            disabled
-            className="w-full flex items-center gap-5 px-6 py-5 rounded-2xl border border-zinc-200 bg-zinc-50 opacity-50 cursor-not-allowed text-left"
+          {/* 실험 02 — coin_simulator */}
+          <a
+            href="https://coinsimulator.vercel.app/"
+            className="group w-full flex items-center gap-5 px-6 py-5 rounded-2xl border border-zinc-300 bg-white hover:bg-zinc-50 hover:border-zinc-500 transition-all duration-150 text-left"
           >
-            <div className="shrink-0 w-10 h-10 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-400 text-lg">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-white text-lg">
               🔬
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-[10px] font-mono text-zinc-400 tracking-widest">EXP 02</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-400 font-medium">준비중</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-600 font-medium">운영중</span>
               </div>
-              <p className="text-sm font-bold text-zinc-400">미공개 실험</p>
-              <p className="text-xs text-zinc-400">Coming soon</p>
+              <p className="text-sm font-bold text-zinc-900">코인 상담사</p>
+              <p className="text-xs text-zinc-500 truncate">패닉에 빠진 투자자를 근거 있는 조언으로 진정시켜라</p>
             </div>
-            <span className="text-zinc-200 text-lg">→</span>
-          </button>
+            <span className="text-zinc-300 group-hover:text-zinc-600 transition-colors text-lg">→</span>
+          </a>
 
         </div>
 
