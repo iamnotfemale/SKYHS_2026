@@ -22,12 +22,14 @@ interface GameState {
   records: TurnRecord[]
   // API 데이터
   candles: Candle[]
+  bgCandles: Candle[]      // 시나리오 시작 전 1년치 배경 데이터
   fearGreedMap: FearGreedMap
   isLoading: boolean
   // actions
   setScreen: (screen: Screen) => void
   selectScenario: (id: number) => void
   setCandles: (candles: Candle[]) => void
+  setBgCandles: (candles: Candle[]) => void
   setFearGreedMap: (map: FearGreedMap) => void
   setLoading: (loading: boolean) => void
   recordFirstChoice: (action: Action) => void
@@ -48,6 +50,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   avgPrice: 0,
   records: [],
   candles: [],
+  bgCandles: [],
   fearGreedMap: {},
   isLoading: false,
 
@@ -63,10 +66,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       avgPrice: 0,
       records: [],
       candles: [],
+      bgCandles: [],
       fearGreedMap: {},
     }),
 
   setCandles: (candles) => set({ candles }),
+  setBgCandles: (bgCandles) => set({ bgCandles }),
   setFearGreedMap: (fearGreedMap) => set({ fearGreedMap }),
   setLoading: (isLoading) => set({ isLoading }),
 
@@ -124,6 +129,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       avgPrice: 0,
       records: [],
       candles: [],
+      bgCandles: [],
       fearGreedMap: {},
     }),
 }))
