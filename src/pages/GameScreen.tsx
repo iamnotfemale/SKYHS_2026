@@ -9,6 +9,7 @@ import ActionButtons from '@/components/ActionButtons'
 import TradeHistory from '@/components/TradeHistory'
 import EmotionPanel from '@/components/EmotionPanel'
 import MidCheckModal from '@/components/MidCheckModal'
+import IntroModal from '@/components/IntroModal'
 
 type Phase = 'first' | 'emotion'
 
@@ -33,6 +34,7 @@ export default function GameScreen() {
   const [showFinalModal, setShowFinalModal] = useState(false)
   const [modalAction, setModalAction] = useState<Action>(null)
   const [modalPct, setModalPct] = useState(50)
+  const [showIntro, setShowIntro] = useState(true)
   const [showMidCheck, setShowMidCheck] = useState(false)
   const midCheckShown = useRef(false)
 
@@ -373,6 +375,11 @@ export default function GameScreen() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 인트로 설명 팝업 */}
+      {showIntro && (
+        <IntroModal scenario={scenario} onStart={() => setShowIntro(false)} />
       )}
 
       {/* 중간점검 팝업 */}
