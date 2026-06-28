@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+﻿import { useEffect, useRef, useState, useMemo } from 'react'
 import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts'
 import { Candle } from '@/api/upbit'
 import { aggregateCandles, Interval } from '@/utils/candleAggregator'
@@ -45,8 +45,8 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
-      layout: { background: { color: '#0f0f0f' }, textColor: '#a1a1aa' },
-      grid: { vertLines: { color: '#1f1f1f' }, horzLines: { color: '#1f1f1f' } },
+      layout: { background: { color: '#060C1A' }, textColor: '#94a3b8' },
+      grid: { vertLines: { color: '#0e1628' }, horzLines: { color: '#0e1628' } },
       timeScale: { borderColor: '#3f3f46', timeVisible: true },
       rightPriceScale: { borderColor: '#3f3f46' },
       crosshair: { mode: 1 },
@@ -151,7 +151,7 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
             key={key}
             onClick={() => setInterval(key)}
             className={`px-3 py-1 text-xs rounded font-medium transition-colors ${
-              interval === key ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-zinc-200'
+              interval === key ? 'bg-signal text-black' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {label}
@@ -170,3 +170,4 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
     </div>
   )
 }
+

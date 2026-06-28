@@ -8,7 +8,42 @@
 
 body {
   margin: 0;
-  background-color: #0f0f0f;
-  color: #f5f5f5;
-  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+  background-color: #060C1A;
+  color: #E2E8F0;
+  font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 }
+
+/* ECG draw animation — start screen signature element */
+.ecg-path {
+  stroke-dasharray: 9999;
+  stroke-dashoffset: 9999;
+  animation: ecg-draw 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 0.1s;
+}
+
+@keyframes ecg-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecg-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Dot-grid background for start screen */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(0,191,143,0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Signal glow on button hover */
+.signal-glow:hover {
+  box-shadow: 0 0 0 1px #00BF8F, 0 0 20px rgba(0,191,143,0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 2px; }

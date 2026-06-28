@@ -1,4 +1,4 @@
-import { useGameStore } from '@/store/gameStore'
+﻿import { useGameStore } from '@/store/gameStore'
 import { SCENARIOS, getTurnEndDate } from '@/data/scenarios'
 import ResultChart from '@/components/ResultChart'
 
@@ -80,7 +80,7 @@ export default function ResultScreen() {
   const aftermath = SCENARIO_AFTERMATH[scenarioId ?? 1]
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white">
+    <div className="min-h-screen bg-void text-white">
       <div className="max-w-4xl mx-auto px-5 py-12">
 
         {/* 헤더 */}
@@ -147,7 +147,7 @@ export default function ResultScreen() {
                 {records.map((r) => {
                   const changed = r.firstChoice !== r.secondChoice
                   return (
-                    <tr key={r.turn} className={`border-b border-zinc-800/50 last:border-0 ${changed ? 'bg-yellow-400/5' : ''}`}>
+                    <tr key={r.turn} className={`border-b border-zinc-800/50 last:border-0 ${changed ? 'bg-signal/5' : ''}`}>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs">{r.turn}</td>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs">{turnDates[r.turn - 1]}</td>
                       <td className="px-4 py-2.5 text-center">
@@ -158,7 +158,7 @@ export default function ResultScreen() {
                       </td>
                       <td className="px-4 py-2.5 text-center text-xs">
                         {changed
-                          ? <span className="text-yellow-400 font-medium">⚡ 변경</span>
+                          ? <span className="text-signal font-medium">⚡ 변경</span>
                           : <span className="text-zinc-600">유지</span>
                         }
                       </td>
@@ -172,8 +172,8 @@ export default function ResultScreen() {
 
         {/* 실제 시장 결과 공개 */}
         {aftermath && (
-          <div className="mb-8 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 px-6 py-5">
-            <p className="text-xs text-yellow-400 mb-2 font-medium">실제 시장에서는 어떤 일이 일어났을까요?</p>
+          <div className="mb-8 rounded-2xl border border-signal/30 bg-signal/5 px-6 py-5">
+            <p className="text-xs text-signal mb-2 font-medium">실제 시장에서는 어떤 일이 일어났을까요?</p>
             <p className="text-zinc-300 text-sm leading-relaxed">{aftermath}</p>
           </div>
         )}
@@ -188,7 +188,7 @@ export default function ResultScreen() {
         <div className="flex gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-10 py-4 bg-yellow-400 text-black font-bold rounded-full hover:bg-yellow-300 transition-colors"
+            className="px-10 py-4 bg-signal text-black font-bold rounded-full hover:bg-signal/80 transition-colors"
           >
             다시 도전하기
           </button>
@@ -214,7 +214,7 @@ function StatCard({
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-4">
       <p className="text-[10px] text-zinc-500 mb-1">{label}</p>
       <p className={`text-2xl font-bold mb-0.5 ${
-        highlight ? 'text-yellow-400'
+        highlight ? 'text-signal'
         : positive === true ? 'text-red-400'
         : positive === false ? 'text-blue-400'
         : 'text-white'
@@ -234,3 +234,4 @@ function ActionBadge({ action }: { action: string | null }) {
   const { label, color } = map[action] ?? { label: action, color: 'text-zinc-400' }
   return <span className={`text-xs font-medium ${color}`}>{label}</span>
 }
+
