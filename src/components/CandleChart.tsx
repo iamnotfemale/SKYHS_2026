@@ -127,17 +127,10 @@ export default function CandleChart({ bgCandles, gameCandles, scenarioStartDate 
       }])
     }
 
-    // 최초 로드: 게임 시작일이 차트 중앙에 오도록 배치
-    if (!hasInitialFit.current && startCandle) {
-      const startIdx = candleData.findIndex((c) => c.time >= gameStartDate)
-      if (startIdx >= 0) {
-        const halfWindow = 40
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: startIdx - halfWindow,
-          to: startIdx + halfWindow,
-        })
-        hasInitialFit.current = true
-      }
+    // 최초 로드: 전체 데이터를 좌우 꽉 채우도록 배치
+    if (!hasInitialFit.current) {
+      chartRef.current.timeScale().fitContent()
+      hasInitialFit.current = true
     }
   }, [chartData, scenarioStartDate])
 
