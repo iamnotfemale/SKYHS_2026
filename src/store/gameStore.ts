@@ -48,7 +48,7 @@ interface GameState {
 const INITIAL_CASH = 100_000_000
 
 export const useGameStore = create<GameState>((set, get) => ({
-  screen: 'start',
+  screen: 'landing',
   scenarioId: null,
   currentTurn: 1,
   totalTurns: 12,
@@ -140,7 +140,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   reset: () =>
     set({
-      screen: 'start',
+      screen: 'landing',
       scenarioId: null,
       currentTurn: 1,
       cash: INITIAL_CASH,

@@ -33,7 +33,7 @@ export default function GameScreen() {
     scenarioId, candles, bgCandles, isLoading,
     cash, holdings, fearGreedMap, avgPrice,
     recordFirstChoice, recordSecondChoice, nextTurn,
-    records,
+    records, setScreen,
   } = useGameStore()
 
   const [phase, setPhase] = useState<Phase>('first')
@@ -161,6 +161,12 @@ export default function GameScreen() {
   const leftPanel = (
     <div className="flex flex-col h-full border-r border-zinc-200">
       <div className="flex items-center gap-3 px-3 py-2 border-b border-zinc-200 shrink-0">
+        <button
+          onClick={() => setScreen('scenario')}
+          className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors mr-1"
+        >
+          ←
+        </button>
         <span className="font-bold text-sm text-zinc-800">{scenario.market}</span>
         {currentPrice > 0 && (
           <span className={`font-bold font-mono text-sm ${priceUp === true ? 'text-red-500' : priceUp === false ? 'text-blue-500' : 'text-zinc-700'}`}>
@@ -327,6 +333,12 @@ export default function GameScreen() {
       <div className="md:hidden flex flex-col h-screen bg-white overflow-hidden">
         <div className="shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200">
+            <button
+              onClick={() => setScreen('scenario')}
+              className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              ←
+            </button>
             <span className="font-bold text-xs text-zinc-700">{scenario.market}</span>
             {currentPrice > 0 && (
               <span className={`font-bold font-mono text-xs ${priceUp === true ? 'text-red-500' : priceUp === false ? 'text-blue-500' : 'text-zinc-700'}`}>
