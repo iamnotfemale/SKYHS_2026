@@ -38,12 +38,6 @@ export default function GameScreen() {
   const [showMidCheck, setShowMidCheck] = useState(false)
   const midCheckShown = useRef(false)
   const [gaugeDisplayVal, setGaugeDisplayVal] = useState(0)
-  const [chartCollapsed, setChartCollapsed] = useState(false)
-
-  const handleMobileScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const collapsed = e.currentTarget.scrollTop > 20
-    setChartCollapsed(collapsed)
-  }
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!
   const coinTicker = scenario.market.split('-')[1]
@@ -324,10 +318,10 @@ export default function GameScreen() {
   return (
     <>
       {/* ────── 모바일 레이아웃 (<md) ────── */}
-      <div className="md:hidden h-screen bg-[#0a0a0a] overflow-y-auto" onScroll={handleMobileScroll}>
+      <div className="md:hidden flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
 
-        {/* sticky 상단 — 차트 + 헤더 */}
-        <div className="sticky top-0 z-20 bg-[#0a0a0a]">
+        {/* 고정 차트 영역 */}
+        <div className="shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
             <span className="font-bold text-xs text-zinc-300">{scenario.market}</span>
             {currentPrice > 0 && (
@@ -339,10 +333,7 @@ export default function GameScreen() {
               {phase === 'first' ? '① 1차 결정' : '② 신호 확인'}
             </span>
           </div>
-          <div
-            className="overflow-hidden transition-[height] duration-300 ease-in-out"
-            style={{ height: chartCollapsed ? '44px' : '38vh' }}
-          >
+          <div className="h-[38vh]">
             <CandleChart bgCandles={bgCandles} gameCandles={visibleCandles} scenarioStartDate={scenario.startDate} />
           </div>
           <div className="h-0.5 bg-zinc-800">
@@ -351,8 +342,8 @@ export default function GameScreen() {
           </div>
         </div>
 
-        {/* 스크롤 콘텐츠 — sticky 아래로 흐름 */}
-        <div>
+        {/* 스크롤 콘텐츠 */}
+        <div className="flex-1 overflow-y-auto">
           {/* 날짜 + 턴 */}
           <div className="px-4 pt-3 pb-2 border-b border-zinc-800">
             <p className="text-lg font-bold font-mono">{turnDisplayDate}</p>
