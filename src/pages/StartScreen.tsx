@@ -11,6 +11,13 @@ export default function StartScreen() {
 
       <div className="relative z-10 w-full max-w-md text-center">
 
+        {/* 뒤로가기 */}
+        <button
+          onClick={() => setScreen('landing')}
+          className="absolute -top-12 left-0 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+        >
+          ← Emotion LAB
+        </button>
         <div className="mb-12 w-full opacity-20">
           <svg viewBox="0 0 800 50" preserveAspectRatio="none" className="w-full h-8" xmlns="http://www.w3.org/2000/svg">
             <path

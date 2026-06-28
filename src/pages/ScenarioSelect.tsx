@@ -3,12 +3,19 @@ import { SCENARIOS } from '@/data/scenarios'
 
 export default function ScenarioSelect() {
   const selectScenario = useGameStore((s) => s.selectScenario)
+  const setScreen = useGameStore((s) => s.setScreen)
 
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-16 bg-white">
       <div className="w-full max-w-2xl">
 
         <div className="mb-10">
+          <button
+            onClick={() => setScreen('start')}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 transition-colors mb-4"
+          >
+            ← 이전
+          </button>
           <h2 className="text-2xl font-bold text-zinc-900 mb-1">시나리오 선택</h2>
           <p className="text-zinc-500 text-sm">실제 역사적 사건을 기반으로 합니다</p>
         </div>
