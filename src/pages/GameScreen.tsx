@@ -391,9 +391,10 @@ export default function GameScreen() {
           {/* 공포탐욕 (모바일) */}
           {fearGreedWidget}
 
-          {/* 뉴스·커뮤니티 패널 — 모바일에서는 CTA 없음 (하단 고정 바에서 처리) */}
+          {/* 뉴스·커뮤니티 — 탭 없이 연속 스크롤 */}
           <EmotionPanel scenarioId={scenarioId!} turnEndDate={turnEndDate}
-            isRevealed={phase !== 'first'} onConfirm={openFinalModal} showConfirm={false} />
+            isRevealed={phase !== 'first'} onConfirm={openFinalModal}
+            showConfirm={false} scrollLayout />
 
         </div>
 
